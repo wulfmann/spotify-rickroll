@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Spotify Rick Roll</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon/favicon-16x16.png">
+    <link rel="manifest" href="/static/favicon/site.webmanifest">
+    <meta name="msapplication-TileColor" content="#ffce07">
+    <meta name="theme-color" content="#ffffff">
+
+    <meta property="og:title" content="Spotify Rickroll">
+    <meta property="og:image" content="/static/preview.png">
+    <meta property="og:description" content="Spotify Rickroll">
+    <meta property="og:url" content="https://spotify-rickroll.vercel.app/">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            font-family: 'Avenir', sans-serif;
+        }
+
+        body {
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .column > * {
+            margin-bottom: 1rem;
+        }
+
+        /* .column > *:last-child {
+            margin-bottom: 0;
+        } */
+
+        input,
+        textarea {
+            font-family: inherit;
+        }
+
+        textarea {
+            font-size: 1rem;
+            padding: .25rem;
+            width: 100%;
+        }
+
+        .button {
+            text-align: center;
+        }
+
+        .button:hover {
+            cursor: pointer;
+        }
+
+        .button input {
+            font-size: 1.25rem;
+            color: white;
+            background: #1cd450;
+            border: 0;
+            outline: none;
+            padding: .5rem;
+        }
+
+        #result {
+            min-height: 64px;
+            background-color: #ddd;
+            margin-bottom: 1rem;
+        }
+
+        textarea,
+        #result,
+        .button input {
+            border-radius: .5rem;
+        }
+
+        #errors {
+            padding-bottom: 1rem;
+            color: red;
+        }
+
+        pre {
+            white-space: inherit;
+            padding: 1rem;
+            font-size: 1rem;
+            word-break: break-all;
+        }
+
+        form {
+            width: 100%;
+            max-width: 450px;
+            left: 0;
+            right: 0;
+            margin-left: auto;
+            margin-right: auto;
+            padding-bottom: 1rem;
+        }
+
+        @media screen and (max-width: 900px) {
+            form {
+                max-width: 100%;
+            }
+        }
+
+        .heading {
+            margin-bottom: 1rem;
+        }
+
+        #customTrack {
+            display: inline-block;
+            padding-bottom: .25rem;
+            border-bottom: 1px black solid;
+            width: 50%;
+            margin: 0 auto;
+            margin-bottom: 1rem;
+        }
+
+        .track {
+            width: 100%;
+        }
+
+        .track label {
+            margin-bottom: .5rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="heading">
+        <img src="/static/rick.webp" />
+        <h1>Spotify Rick Roll</h1>
+        <p>Paste a spotify track link or ID in each box to generate a link.</p>
+    </div>
+    
+
+    <form id="generateForm">
+        <div class="column">
+            <div class="track">
+                <label>Source Track (this will be the preview shown in messages)</label>
+                <textarea id="source"></textarea>
+            </div>
+
+            <div id="customTrack">Add Custom Target Track</div>
+
+            <div id="targetTrack" class="track" style="display: none;">
+                <label>Target Track (this will be the track that plays). By default it is a rickroll</label>
+                <textarea id="target">4PTG3Z6ehGkBFwjybzWkR8</textarea>
+            </div>
+        </div>
+
+        <pre id="result"></pre>
+
+        <div id="errors"></div>
+
+        <div class="button">
+            <input type="submit" value="Copy Link"/>
+        </div>
+    </form>
+
+    <script defer src="/_vercel/insights/script.js"></script>
+
+    <script>
+        (function() {
+            var form = document.getElementById('generateForm');
+
+            function renderError(errorMessage) {
+                document.getElementById('errors').innerText = errorMessage;
+            }
+
+            function isAlphaNumeric(str) {
+                var code, i, len;
+
+                for (i = 0, len = str.length; i < len; i++) {
+                    code = str.charCodeAt(i);
+                    if (!(code > 47 && code < 58) && // numeric (0-9)
+                        !(code > 64 && code < 91) && // upper alpha (A-Z)
+                        !(code > 96 && code < 123)) { // lower alpha (a-z)
+                    return false;
+                    }
+                }
+                return true;
+            };
+
+            function validateTrackIds(visible, hidden) {
+                return visible && isAlphaNumeric(visible) && hidden && isAlphaNumeric(hidden);
+            }
+
+            function isUrl(string) {
+                try {
+                    return new URL(string);
+                } catch (_) {
+                    return false;  
+                }
+            }
+
+            function parseTrackId(trackString) {
+                var url = isUrl(trackString);
+                if (!url) {
+                    return trackString;
+                }
+                var pathElements = url.pathname.split('/');
+                return pathElements[pathElements.length-1];
+            }
+
+            function buildUrl(sourceTrackId, targetTrackId) {
+                const baseURL = 'https://open.spotify.com/track';
+                const queryString = `spotify:track:${targetTrackId}`;
+                const endpoint = `${baseURL}/${sourceTrackId}?context=${encodeURIComponent(queryString)}`;
+                return endpoint;
+            }
+
+            document.getElementById('customTrack').addEventListener('click', function(e) {
+                e.preventDefault();
+                document.getElementById('targetTrack').style.display = 'block';
+            })
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                // clear errors
+                document.getElementById('errors').innerText = '';
+
+                var source = document.getElementById('source').value;
+                var target = document.getElementById('target').value;
+
+                var sourceTrackId = parseTrackId(source);
+                var targetTrackId = parseTrackId(target);
+
+                if (!(validateTrackIds(sourceTrackId, targetTrackId))) {
+                    return renderError('invalid urls. please check both boxes.')
+                }
+                
+                const url = buildUrl(sourceTrackId, targetTrackId);
+                document.getElementById('result').innerText = url;
+
+                navigator.clipboard.writeText(url);
+            });
+        }())
+    </script>
+</body>
+
+</html>
